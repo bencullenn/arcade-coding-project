@@ -6,6 +6,10 @@ class Store:
         self.pending_changes = []
 
     def set(self, key, value):
+        if not isinstance(key, self.key_type):
+            raise ValueError(f"Key must be of type {self.key_type}")
+        if not isinstance(value, self.value_type):
+            raise ValueError(f"Value must be of type {self.value_type}")
         self.pending_changes.append(("set", key, value))
 
     def get(self, key):
