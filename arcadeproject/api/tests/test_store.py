@@ -21,6 +21,7 @@ def test_delete(store):
 def test_transaction(store):
     store.begin()
     store.set("key", "value")
+    assert store.get("key") is None
     store.commit()
     assert store.get("key") == "value"
 
