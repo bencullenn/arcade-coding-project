@@ -1,101 +1,84 @@
 from django.shortcuts import render
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+from .serializers import KeyValueSerializer, KeySerializer, TransactionSerializer
 from kv_store.store import Store
-import json
 
 store = Store(str, str)
 
 
-# Create your views here.
-@csrf_exempt
+@api_view(["POST"])
 def set(request):
-    # Verify the request method
-    if request.method != "POST":
-        return JsonResponse({"error": "Method not allowed"}, status=405)
-
-    # Parse the JSON request body
-    try:
-        data = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({"error": "Invalid JSON data"}, status=400)
-
-    # Validate the request body
-    if "key" not in data:
-        return JsonResponse({"error": "Missing required parameter: key"}, status=400)
-
-    if "value" not in data:
-        return JsonResponse({"error": "Missing required parameter: value"}, status=400)
-
-    # Set the key-value pair
-    store.set(data["key"], data["value"])
-    return JsonResponse({"message": "Key-value pair set successfully"})
+    """
+    Set a key-value pair in the store.
+    """
+    serializer = KeyValueSerializer(data=request.data)
+    if serializer.is_valid():
+        store.set(serializer.validated_data["key"], serializer.validated_data["value"])
+        return Response({"message": "Key-value pair set successfully"})
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(["GET"])
 def get(request):
-    # Verify the request method
-    if request.method != "GET":
-        return JsonResponse({"error": "Method not allowed"}, status=405)
-
-    # Validate the request parameters
+    """
+    Get a value by key from the store.
+    """
     key = request.query_params.get("key")
     if not key:
-        return JsonResponse({"error": "Missing required parameter: key"}, status=400)
+        return Response(
+            {"error": "Missing required parameter: key"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     value = store.get(key)
-    return JsonResponse({"value": value})
+    return Response({"value": value})
 
 
-@csrf_exempt
+@api_view(["POST"])
 def delete(request):
-    # Verify the request method
-    if request.method != "POST":
-        return JsonResponse({"error": "Method not allowed"}, status=405)
-
-    # Parse the JSON request body
-    try:
-        data = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({"error": "Invalid JSON data"}, status=400)
-
-    # Validate the request parameters
-    key = data.get("key")
-    if not key:
-        return JsonResponse({"error": "Missing required parameter: key"}, status=400)
-
-    # Delete the key-value pair
-    store.delete(key)
-    return JsonResponse({"message": "Key-value pair deleted successfully"})
+    """
+    Delete a key-value pair from the store.
+    """
+    serializer = KeySerializer(data=request.data)
+    if serializer.is_valid():
+        store.delete(serializer.validated_data["key"])
+        return Response({"message": "Key-value pair deleted successfully"})
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@csrf_exempt
+@api_view(["POST"])
 def begin(request):
-    # Verify the request method
-    if request.method != "POST":
-        return JsonResponse({"error": "Method not allowed"}, status=405)
+    """
+    Begin a new transaction.
+    """
+    serializer = TransactionSerializer(data=request.data)
+    if serializer.is_valid():
+        store.begin()
+        return Response({"message": "Transaction started"})
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # Start a new transaction
-    store.begin()
-    return JsonResponse({"message": "Transaction started"})
 
-
-@csrf_exempt
+@api_view(["POST"])
 def commit(request):
-    # Verify the request method
-    if request.method != "POST":
-        return JsonResponse({"error": "Method not allowed"}, status=405)
+    """
+    Commit the current transaction.
+    """
+    serializer = TransactionSerializer(data=request.data)
+    if serializer.is_valid():
+        store.commit()
+        return Response({"message": "Transaction committed"})
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # Commit the transaction
-    store.commit()
-    return JsonResponse({"message": "Transaction committed"})
 
-
-@csrf_exempt
+@api_view(["POST"])
 def rollback(request):
-    # Verify the request method
-    if request.method != "POST":
-        return JsonResponse({"error": "Method not allowed"}, status=405)
-
-    # Rollback the transaction
-    store.rollback()
-    return JsonResponse({"message": "Transaction rolled back"})
+    """
+    Rollback the current transaction.
+    """
+    serializer = TransactionSerializer(data=request.data)
+    if serializer.is_valid():
+        store.rollback()
+        return Response({"message": "Transaction rolled back"})
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
